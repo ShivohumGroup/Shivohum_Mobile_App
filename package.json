@@ -1,0 +1,36 @@
+{
+  "name": "siteflow",
+  "version": "1.0.0",
+  "private": true,
+  "description": "SiteFlow — Construction Site Manager",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev:api": "npm run start:dev -w @siteflow/api",
+    "dev:admin": "npm run dev -w @siteflow/admin",
+    "dev:mobile": "npm run start -w @siteflow/mobile",
+    "build": "npm run build -w @siteflow/shared && npm run build -w @siteflow/api && npm run build -w @siteflow/admin",
+    "build:shared": "npm run build -w @siteflow/shared",
+    "build:api": "npm run build -w @siteflow/api",
+    "build:admin": "npm run build -w @siteflow/admin",
+    "test": "npm run test -w @siteflow/api",
+    "test:api": "npm run test -w @siteflow/api",
+    "lint": "npm run lint -w @siteflow/api --if-present && npm run lint -w @siteflow/admin --if-present",
+    "typecheck": "npm run typecheck -w @siteflow/shared --if-present && npm run typecheck -w @siteflow/api --if-present && npm run typecheck -w @siteflow/admin --if-present",
+    "db:generate": "npm run prisma:generate -w @siteflow/api",
+    "db:migrate": "npm run prisma:migrate -w @siteflow/api",
+    "db:seed": "npm run prisma:seed -w @siteflow/api",
+    "db:studio": "npm run prisma:studio -w @siteflow/api",
+    "docker:up": "docker compose up -d",
+    "docker:down": "docker compose down",
+    "setup": "npm install && npm run build:shared && npm run db:generate"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "ajv": "^8.17.1"
+  }
+}

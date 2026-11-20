@@ -1,0 +1,36 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --color-navy: #0b1f3a;
+  --color-teal: #0d9488;
+  --color-amber: #d97706;
+  --color-surface: #ffffff;
+  --color-surface-muted: #f5f7fa;
+  --color-border: #e5e9f0;
+}
+
+html,
+body {
+  min-height: 100%;
+}
+
+body {
+  color: var(--color-navy);
+  background: var(--color-surface-muted);
+  -webkit-font-smoothing: antialiased;
+}
+
+* {
+  border-color: var(--color-border);
+}
+
+@layer utilities {
+  .page-title {
+    @apply text-2xl font-semibold tracking-tight text-navy;
+  }
+  .page-subtitle {
+    @apply mt-1 text-sm text-slate-500;
+  }
+}

@@ -1,0 +1,643 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  SUPER_ADMIN
+  ADMIN
+  PARTNER
+  SITE_MANAGER
+  VIEWER
+}
+
+enum ProjectStatus {
+  PLANNING
+  ACTIVE
+  ON_HOLD
+  COMPLETED
+  CANCELLED
+  ARCHIVED
+}
+
+enum ProjectType {
+  RESIDENTIAL
+  COMMERCIAL
+  INTERIOR
+  RENOVATION
+  OTHER
+}
+
+enum PaymentMethod {
+  CASH
+  BANK_TRANSFER
+  UPI
+  CHEQUE
+  OTHER
+}
+
+enum TransactionStatus {
+  CONFIRMED
+  PENDING
+  VOIDED
+  REJECTED
+}
+
+enum ExpensePaymentStatus {
+  PAID
+  PARTIALLY_PAID
+  UNPAID
+}
+
+enum ActivityType {
+  SITE_CREATED
+  SITE_UPDATED
+  SITE_STATUS_CHANGED
+  INCOME_RECORDED
+  INCOME_VOIDED
+  EXPENSE_ADDED
+  EXPENSE_UPDATED
+  EXPENSE_PAYMENT_ADDED
+  CONTACT_ADDED
+  CONTACT_UPDATED
+  PROGRESS_POSTED
+  PROGRESS_UPDATED
+  SCHEDULE_CREATED
+  SCHEDULE_UPDATED
+  REPORT_GENERATED
+  USER_INVITED
+  MEMBERSHIP_CHANGED
+}
+
+enum NotificationType {
+  ACTIVITY
+  SYSTEM
+  REMINDER
+}
+
+enum ScheduleTaskStatus {
+  PLANNED
+  IN_PROGRESS
+  DONE
+  CANCELLED
+}
+
+enum AttachmentKind {
+  RECEIPT
+  INVOICE
+  DOCUMENT
+  PHOTO
+  OTHER
+}
+
+model Organization {
+  id        String   @id @default(uuid()) @db.Uuid
+  name      String
+  code      String   @unique
+  timezone  String   @default("Asia/Kolkata")
+  currency  String   @default("INR")
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users             User[]
+  sites             Site[]
+  clients           Client[]
+  vendors           Vendor[]
+  contacts          Contact[]
+  expenseCategories ExpenseCategory[]
+  incomeTransactions IncomeTransaction[]
+  expenses          Expense[]
+  progressUpdates   ProgressUpdate[]
+  scheduleTasks     ScheduleTask[]
+  attachments       Attachment[]
+  notifications     Notification[]
+  activityLogs      ActivityLog[]
+  auditLogs         AuditLog[]
+  siteMemberships   SiteMembership[]
+}
+
+model User {
+  id           String    @id @default(uuid()) @db.Uuid
+  organizationId String  @db.Uuid
+  email        String
+  passwordHash String
+  fullName     String
+  phone        String?
+  role         UserRole
+  isActive     Boolean   @default(true)
+  lastLoginAt  DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  refreshTokens RefreshToken[]
+  passwordResets PasswordResetToken[]
+  memberships   SiteMembership[]
+  managedSites  Site[] @relation("SiteProjectManager")
+  createdSites  Site[] @relation("SiteCreatedBy")
+  incomeCreated IncomeTransaction[] @relation("IncomeCreatedBy")
+  expensesCreated Expense[] @relation("ExpenseCreatedBy")
+  expensePayments ExpensePayment[] @relation("ExpensePaymentCreatedBy")
+  contactsCreated Contact[] @relation("ContactCreatedBy")
+  progressCreated ProgressUpdate[] @relation("ProgressCreatedBy")
+  scheduleCreated ScheduleTask[] @relation("ScheduleCreatedBy")
+  scheduleAssigned ScheduleTask[] @relation("ScheduleAssignee")
+  notifications Notification[]
+  activityLogs  ActivityLog[] @relation("ActivityActor")
+  auditLogs     AuditLog[] @relation("AuditActor")
+  attachmentsUploaded Attachment[] @relation("AttachmentUploadedBy")
+  devicePushTokens DevicePushToken[]
+
+  @@unique([organizationId, email])
+  @@index([organizationId])
+  @@index([email])
+  @@index([role])
+}
+
+model DevicePushToken {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @db.Uuid
+  userId         String   @db.Uuid
+  token          String
+  platform       String
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, token])
+  @@index([organizationId])
+  @@index([userId])
+  @@index([token])
+}
+
+model RefreshToken {
+  id         String    @id @default(uuid()) @db.Uuid
+  userId     String    @db.Uuid
+  tokenHash  String
+  familyId   String    @db.Uuid
+  expiresAt  DateTime
+  revokedAt  DateTime?
+  replacedBy String?   @db.Uuid
+  userAgent  String?
+  ipAddress  String?
+  createdAt  DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([tokenHash])
+  @@index([familyId])
+}
+
+model PasswordResetToken {
+  id        String    @id @default(uuid()) @db.Uuid
+  userId    String    @db.Uuid
+  tokenHash String
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([tokenHash])
+  @@index([userId])
+}
+
+model Site {
+  id                     String        @id @default(uuid()) @db.Uuid
+  organizationId         String        @db.Uuid
+  name                   String
+  code                   String
+  clientName             String
+  clientPhone            String?
+  address                String
+  city                   String
+  state                  String
+  projectType            ProjectType
+  description            String?
+  contractAmount         Decimal       @db.Decimal(18, 2)
+  agreedStartDate        DateTime      @db.Date
+  expectedCompletionDate DateTime?     @db.Date
+  actualCompletionDate   DateTime?     @db.Date
+  status                 ProjectStatus @default(PLANNING)
+  projectManagerId       String?       @db.Uuid
+  notes                  String?
+  createdById            String        @db.Uuid
+  archivedAt             DateTime?
+  createdAt              DateTime      @default(now())
+  updatedAt              DateTime      @updatedAt
+
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  projectManager User?        @relation("SiteProjectManager", fields: [projectManagerId], references: [id])
+  createdBy      User         @relation("SiteCreatedBy", fields: [createdById], references: [id])
+  memberships    SiteMembership[]
+  clients        Client[]
+  contacts       ContactSite[]
+  incomeTransactions IncomeTransaction[]
+  expenses       Expense[]
+  progressUpdates ProgressUpdate[]
+  scheduleTasks  ScheduleTask[]
+  attachments    Attachment[]
+  activityLogs   ActivityLog[]
+  notifications  Notification[]
+
+  @@unique([organizationId, code])
+  @@index([organizationId])
+  @@index([status])
+  @@index([projectType])
+  @@index([projectManagerId])
+  @@index([name])
+  @@index([clientName])
+}
+
+model SiteMembership {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @db.Uuid
+  siteId         String   @db.Uuid
+  userId         String   @db.Uuid
+  role           UserRole
+  canViewFinance Boolean  @default(true)
+  canEditFinance Boolean  @default(false)
+  canEditProgress Boolean @default(true)
+  canEditContacts Boolean @default(true)
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  site         Site         @relation(fields: [siteId], references: [id])
+  user         User         @relation(fields: [userId], references: [id])
+
+  @@unique([siteId, userId])
+  @@index([organizationId])
+  @@index([userId])
+  @@index([siteId])
+}
+
+model Client {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @db.Uuid
+  siteId         String?  @db.Uuid
+  name           String
+  phone          String?
+  email          String?
+  address        String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  site         Site?        @relation(fields: [siteId], references: [id])
+  incomeTransactions IncomeTransaction[]
+
+  @@index([organizationId])
+  @@index([siteId])
+  @@index([name])
+}
+
+model Vendor {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @db.Uuid
+  name           String
+  phone          String?
+  email          String?
+  address        String?
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  expenses     Expense[]
+
+  @@index([organizationId])
+  @@index([name])
+}
+
+model Contact {
+  id              String   @id @default(uuid()) @db.Uuid
+  organizationId  String   @db.Uuid
+  personName      String
+  companyName     String?
+  workCategory    String
+  designation     String?
+  primaryPhone    String
+  alternatePhone  String?
+  whatsappNumber  String?
+  email           String?
+  address         String?
+  notes           String?
+  isActive        Boolean  @default(true)
+  createdById     String   @db.Uuid
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  createdBy    User         @relation("ContactCreatedBy", fields: [createdById], references: [id])
+  sites        ContactSite[]
+  expenses     Expense[]
+
+  @@index([organizationId])
+  @@index([personName])
+  @@index([companyName])
+  @@index([primaryPhone])
+  @@index([workCategory])
+  @@index([isActive])
+}
+
+model ContactSite {
+  id        String   @id @default(uuid()) @db.Uuid
+  contactId String   @db.Uuid
+  siteId    String   @db.Uuid
+  createdAt DateTime @default(now())
+
+  contact Contact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  site    Site    @relation(fields: [siteId], references: [id], onDelete: Cascade)
+
+  @@unique([contactId, siteId])
+  @@index([siteId])
+}
+
+model ExpenseCategory {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @db.Uuid
+  name           String
+  description    String?
+  isActive       Boolean  @default(true)
+  sortOrder      Int      @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  expenses     Expense[]
+
+  @@unique([organizationId, name])
+  @@index([organizationId])
+}
+
+model IncomeTransaction {
+  id              String            @id @default(uuid()) @db.Uuid
+  organizationId  String            @db.Uuid
+  siteId          String            @db.Uuid
+  clientId        String?           @db.Uuid
+  amount          Decimal           @db.Decimal(18, 2)
+  dateReceived    DateTime          @db.Date
+  paymentMethod   PaymentMethod
+  referenceNumber String?
+  description     String?
+  status          TransactionStatus @default(CONFIRMED)
+  voidReason      String?
+  voidedAt        DateTime?
+  voidedById      String?           @db.Uuid
+  attachmentId    String?           @db.Uuid
+  createdById     String            @db.Uuid
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  site         Site         @relation(fields: [siteId], references: [id])
+  client       Client?      @relation(fields: [clientId], references: [id])
+  createdBy    User         @relation("IncomeCreatedBy", fields: [createdById], references: [id])
+  attachment   Attachment?  @relation(fields: [attachmentId], references: [id])
+
+  @@index([organizationId])
+  @@index([siteId])
+  @@index([dateReceived])
+  @@index([status])
+  @@index([paymentMethod])
+  @@index([createdAt])
+}
+
+model Expense {
+  id              String               @id @default(uuid()) @db.Uuid
+  organizationId  String               @db.Uuid
+  siteId          String               @db.Uuid
+  categoryId      String               @db.Uuid
+  vendorId        String?              @db.Uuid
+  contactId       String?              @db.Uuid
+  vendorName      String?
+  amount          Decimal              @db.Decimal(18, 2)
+  amountPaid      Decimal              @default(0) @db.Decimal(18, 2)
+  expenseDate     DateTime             @db.Date
+  paymentStatus   ExpensePaymentStatus @default(UNPAID)
+  paymentMethod   PaymentMethod?
+  referenceNumber String?
+  description     String?
+  notes           String?
+  status          TransactionStatus    @default(CONFIRMED)
+  voidReason      String?
+  voidedAt        DateTime?
+  attachmentId    String?              @db.Uuid
+  createdById     String               @db.Uuid
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  site         Site         @relation(fields: [siteId], references: [id])
+  category     ExpenseCategory @relation(fields: [categoryId], references: [id])
+  vendor       Vendor?      @relation(fields: [vendorId], references: [id])
+  contact      Contact?     @relation(fields: [contactId], references: [id])
+  createdBy    User         @relation("ExpenseCreatedBy", fields: [createdById], references: [id])
+  attachment   Attachment?  @relation(fields: [attachmentId], references: [id])
+  payments     ExpensePayment[]
+
+  @@index([organizationId])
+  @@index([siteId])
+  @@index([categoryId])
+  @@index([expenseDate])
+  @@index([paymentStatus])
+  @@index([status])
+}
+
+model ExpensePayment {
+  id              String            @id @default(uuid()) @db.Uuid
+  organizationId  String            @db.Uuid
+  expenseId       String            @db.Uuid
+  amount          Decimal           @db.Decimal(18, 2)
+  paidAt          DateTime          @db.Date
+  paymentMethod   PaymentMethod
+  referenceNumber String?
+  notes           String?
+  status          TransactionStatus @default(CONFIRMED)
+  voidReason      String?
+  voidedAt        DateTime?
+  attachmentId    String?           @db.Uuid
+  createdById     String            @db.Uuid
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  expense     Expense     @relation(fields: [expenseId], references: [id])
+  createdBy   User        @relation("ExpensePaymentCreatedBy", fields: [createdById], references: [id])
+  attachment  Attachment? @relation(fields: [attachmentId], references: [id])
+
+  @@index([organizationId])
+  @@index([expenseId])
+  @@index([paidAt])
+  @@index([status])
+}
+
+model ProgressUpdate {
+  id                 String   @id @default(uuid()) @db.Uuid
+  organizationId     String   @db.Uuid
+  siteId             String   @db.Uuid
+  updateDate         DateTime @db.Date
+  title              String
+  description        String
+  workCategory       String?
+  completedWork      String?
+  workInProgress     String?
+  blockers           String?
+  nextDayPlan        String?
+  completionPercent  Int?
+  createdById        String   @db.Uuid
+  editedAt           DateTime?
+  previousSnapshot   Json?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  site         Site         @relation(fields: [siteId], references: [id])
+  createdBy    User         @relation("ProgressCreatedBy", fields: [createdById], references: [id])
+  photos       ProgressPhoto[]
+
+  @@index([organizationId])
+  @@index([siteId])
+  @@index([updateDate])
+  @@index([workCategory])
+}
+
+model ProgressPhoto {
+  id               String   @id @default(uuid()) @db.Uuid
+  progressUpdateId String   @db.Uuid
+  attachmentId     String   @db.Uuid
+  caption          String?
+  sortOrder        Int      @default(0)
+  createdAt        DateTime @default(now())
+
+  progressUpdate ProgressUpdate @relation(fields: [progressUpdateId], references: [id], onDelete: Cascade)
+  attachment     Attachment     @relation(fields: [attachmentId], references: [id])
+
+  @@index([progressUpdateId])
+}
+
+/// Future work / next-day tasks (excavation, call plumber, etc.)
+model ScheduleTask {
+  id             String             @id @default(uuid()) @db.Uuid
+  organizationId String             @db.Uuid
+  siteId         String?            @db.Uuid
+  title          String
+  notes          String?
+  category       String?
+  scheduledDate  DateTime           @db.Date
+  status         ScheduleTaskStatus @default(PLANNED)
+  assigneeId     String?            @db.Uuid
+  createdById    String             @db.Uuid
+  completedAt    DateTime?
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  site         Site?        @relation(fields: [siteId], references: [id])
+  assignee     User?        @relation("ScheduleAssignee", fields: [assigneeId], references: [id])
+  createdBy    User         @relation("ScheduleCreatedBy", fields: [createdById], references: [id])
+
+  @@index([organizationId])
+  @@index([siteId])
+  @@index([scheduledDate])
+  @@index([status])
+  @@index([assigneeId])
+}
+
+model Attachment {
+  id             String         @id @default(uuid()) @db.Uuid
+  organizationId String         @db.Uuid
+  siteId         String?        @db.Uuid
+  kind           AttachmentKind @default(OTHER)
+  fileName       String
+  mimeType       String
+  sizeBytes      Int
+  storageKey     String
+  storageProvider String        @default("local")
+  uploadedById   String         @db.Uuid
+  createdAt      DateTime       @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  site         Site?        @relation(fields: [siteId], references: [id])
+  uploadedBy   User         @relation("AttachmentUploadedBy", fields: [uploadedById], references: [id])
+  incomeTransactions IncomeTransaction[]
+  expenses     Expense[]
+  expensePayments ExpensePayment[]
+  progressPhotos ProgressPhoto[]
+
+  @@index([organizationId])
+  @@index([siteId])
+  @@index([storageKey])
+}
+
+model Notification {
+  id             String           @id @default(uuid()) @db.Uuid
+  organizationId String           @db.Uuid
+  userId         String           @db.Uuid
+  siteId         String?          @db.Uuid
+  type           NotificationType @default(ACTIVITY)
+  title          String
+  body           String
+  data           Json?
+  isRead         Boolean          @default(false)
+  readAt         DateTime?
+  createdAt      DateTime         @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  site         Site?        @relation(fields: [siteId], references: [id])
+
+  @@index([userId, isRead])
+  @@index([organizationId])
+  @@index([createdAt])
+}
+
+model ActivityLog {
+  id             String       @id @default(uuid()) @db.Uuid
+  organizationId String       @db.Uuid
+  siteId         String?      @db.Uuid
+  actorId        String?      @db.Uuid
+  type           ActivityType
+  summary        String
+  metadata       Json?
+  createdAt      DateTime     @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  site         Site?        @relation(fields: [siteId], references: [id])
+  actor        User?        @relation("ActivityActor", fields: [actorId], references: [id])
+
+  @@index([organizationId])
+  @@index([siteId])
+  @@index([type])
+  @@index([createdAt])
+}
+
+model AuditLog {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @db.Uuid
+  actorId        String?  @db.Uuid
+  entityType     String
+  entityId       String
+  action         String
+  before         Json?
+  after          Json?
+  reason         String?
+  ipAddress      String?
+  createdAt      DateTime @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  actor        User?        @relation("AuditActor", fields: [actorId], references: [id])
+
+  @@index([organizationId])
+  @@index([entityType, entityId])
+  @@index([createdAt])
+}

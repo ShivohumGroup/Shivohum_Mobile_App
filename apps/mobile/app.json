@@ -1,0 +1,79 @@
+{
+  "expo": {
+    "name": "SiteFlow",
+    "slug": "siteflow",
+    "version": "1.2.0",
+    "orientation": "portrait",
+    "scheme": "siteflow",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "icon": "./assets/icon.png",
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0B1F3A"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.siteflow.app",
+      "infoPlist": {
+        "NSCameraUsageDescription": "SiteFlow needs camera access to attach progress photos.",
+        "NSPhotoLibraryUsageDescription": "SiteFlow needs photo library access to attach receipts and progress photos."
+      }
+    },
+    "android": {
+      "versionCode": 6,
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#0B1F3A"
+      },
+      "package": "com.siteflow.app",
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.RECEIVE_BOOT_COMPLETED",
+        "android.permission.VIBRATE",
+        "android.permission.RECORD_AUDIO"
+      ]
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow SiteFlow to access photos for receipts and progress updates.",
+          "cameraPermission": "Allow SiteFlow to take photos for progress updates."
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "color": "#0D9488"
+        }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "usesCleartextTraffic": true
+          }
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true,
+      "tsconfigPaths": true
+    },
+    "extra": {
+      "apiUrl": "https://proceeds-scanners-exclusion-nominated.trycloudflare.com/api/v1",
+      "router": {
+        "origin": false
+      },
+      "eas": {
+        "projectId": "5e295bca-7ffc-4a33-93de-fd413fc60bb4"
+      }
+    }
+  }
+}
