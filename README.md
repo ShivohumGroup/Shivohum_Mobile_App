@@ -14,6 +14,8 @@ Production-oriented monorepo for managing multiple construction/interior sites: 
 
 ## Quick start (local)
 
+> New to the project? Follow the full step-by-step guide in [SETUP.md](SETUP.md).
+
 ### 1. Prerequisites
 
 - Node.js 20+
@@ -34,9 +36,9 @@ Postgres is published on **host port 5434** (avoids conflicts with other local P
 ```bash
 npm install --legacy-peer-deps
 npm run build:shared
-cp .env.example .env
+cp .env.example apps/api/.env
 npm run db:generate
-cd apps/api && npx prisma migrate dev --name init && npm run prisma:seed && cd ../..
+cd apps/api && npx prisma migrate deploy && npm run prisma:seed && cd ../..
 ```
 
 ### 4. Run services
